@@ -14,6 +14,39 @@
 - [ ] JavaScript Runtime Environment
   - [ ] Browser vs Node.js runtime differences
   - [ ] V8 engine architecture overview
+  - [ ] V8 Engine Deep Dive
+    - [ ] V8 Architecture Components
+      - [ ] Parser: Source code → AST conversion
+        - [ ] Lexer/Tokenizer: Keyword/identifier/operator recognition
+        - [ ] Parser: Syntax tree construction with node types
+        - [ ] Syntax validation and error reporting
+      - [ ] Ignition Interpreter: Bytecode generation and execution
+        - [ ] Bytecode instruction set overview
+        - [ ] Register-based bytecode architecture
+        - [ ] Baseline compilation for fast startup
+      - [ ] TurboFan Compiler: JIT optimization
+        - [ ] Hot function detection (execution counting)
+        - [ ] Optimization tiers: unoptimized → optimized → deoptimized
+        - [ ] Inlining, escape analysis, type specialization
+      - [ ] Orinoco Garbage Collector
+        - [ ] Generational GC: New Space vs Old Space
+        - [ ] Scavenge algorithm for New Space (Cheney's algorithm)
+        - [ ] Mark-Sweep-Compact for Old Space
+        - [ ] Incremental and concurrent marking
+    - [ ] Object Optimization Techniques
+      - [ ] Hidden Classes (Maps)
+        - [ ] Dynamic object layout tracking
+        - [ ] Transition chains for property additions
+        - [ ] Hidden class sharing for same-shaped objects
+      - [ ] Inline Caching (IC)
+        - [ ] Property access caching via inline caches
+        - [ ] Monomorphic, polymorphic, megamorphic states
+        - [ ] IC stub generation and invalidation
+    - [ ] Performance Implications
+      - [ ] Why object shape consistency matters
+      - [ ] Hidden class transitions and performance
+      - [ ] Deoptimization triggers and recovery
+      - [ ] Memory fragmentation and GC pressure
   - [ ] Call stack mechanism
   - [ ] Memory heap and garbage collection
 - [ ] The Event Loop Deep Dive
@@ -42,6 +75,69 @@
 - [ ] Node.js Architecture Fundamentals
   - [ ] Single-threaded event-driven model
   - [ ] Libuv library and thread pool
+  - [ ] libuv & System Call Internals
+    - [ ] libuv Architecture
+      - [ ] Event Loop Core
+        - [ ] Single-threaded event loop model
+        - [ ] I/O abstraction layer for cross-platform support
+      - [ ] Thread Pool
+        - [ ] Default 4-thread pool size (configurable via UV_THREADPOOL_SIZE)
+        - [ ] Work queue and task distribution
+        - [ ] Thread-safe communication with event loop
+    - [ ] System Call Wrapping
+      - [ ] Non-blocking I/O Implementation
+        - [ ] O_NONBLOCK flag for file descriptors
+        - [ ] EAGAIN/EWOULDBLOCK handling for incomplete operations
+        - [ ] Edge-triggered vs level-triggered notifications
+      - [ ] Platform-Specific APIs
+        - [ ] Linux: epoll (event polling)
+          - [ ] epoll_create, epoll_ctl, epoll_wait system calls
+          - [ ] O(1) event notification complexity
+        - [ ] macOS: kqueue (kernel event queue)
+          - [ ] kevent system calls for event filtering
+          - [ ] Unified event notification for sockets, files, timers
+        - [ ] Windows: IOCP (I/O Completion Ports)
+          - [ ] Asynchronous I/O with completion ports
+          - [ ] Thread pool integration
+    - [ ] Thread Pool Operations
+      - [ ] Operations delegated to thread pool
+        - [ ] File system operations (fs module)
+        - [ ] DNS lookups (dns module)
+        - [ ] Compression (zlib module)
+        - [ ] Cryptographic operations (crypto module)
+      - [ ] Work scheduling and load balancing
+    - [ ] Event Loop Phases Deep Dive
+      - [ ] Timers Phase
+        - [ ] setTimeout/setInterval callback execution
+        - [ ] Binary heap for timer management
+        - [ ] Minimum delay of 1ms (Node.js implementation)
+      - [ ] Pending Callbacks Phase
+        - [ ] I/O callbacks from previous loop iteration
+        - [ ] process.nextTick() queue (microtask, runs between phases)
+      - [ ] Idle/Prepare Phase
+        - [ ] Internal Node.js use only
+        - [ ] prepare phase for poll phase setup
+      - [ ] Poll Phase
+        - [ ] I/O polling with timeout calculation
+        - [ ] New I/O event callbacks execution
+        - [ ] Blocking behavior: if no timers, blocks until I/O or timeout
+      - [ ] Check Phase
+        - [ ] setImmediate() callbacks execution
+        - [ ] Runs after poll phase completes
+      - [ ] Close Callbacks Phase
+        - [ ] socket.on('close') and similar cleanup callbacks
+        - [ ] Process exit handling
+    - [ ] process.nextTick vs setImmediate
+      - [ ] process.nextTick()
+        - [ ] Microtask queue, runs between every phase
+        - [ ] Higher priority than Promise microtasks
+        - [ ] Use case: Ensure execution before I/O
+      - [ ] setImmediate()
+        - [ ] Macrotask, runs in check phase
+        - [ ] Use case: Break up long-running operations
+      - [ ] Execution order in different contexts
+        - [ ] In I/O cycle: setImmediate before nextTick
+        - [ ] In main module: nextTick before setImmediate
   - [ ] Worker Threads for CPU-intensive tasks
   - [ ] Clustering for multi-core utilization
 - [ ] Node.js Modules System
@@ -154,6 +250,87 @@
 - [ ] Hooks Deep Dive
   - [ ] useState: state management patterns
   - [ ] useEffect: side effects and dependencies
+  - [ ] useEffect Internals & Implementation
+    - [ ] Fiber Node Structure
+      - [ ] Effect-related properties
+        - [ ] effectTag: bitmask tracking effect operations
+        - [ ] effect list: singly-linked list of effects
+        - [ ] memoizedState: hook state storage
+      - [ ] Effect object structure
+        - [ ] tag: effect type (Passive, Layout, etc.)
+        - [ ] create: effect function
+        - [ ] destroy: cleanup function
+        - [ ] deps: dependency array
+        - [ ] next: pointer to next effect in list
+    - [ ] Effect Scheduling
+      - [ ] Effect Types
+        - [ ] Passive effects (useEffect): After paint, non-blocking
+        - [ ] Layout effects (useLayoutEffect): Before paint, blocking
+      - [ ] Scheduling phases
+        - [ ] Render phase: Effect creation and scheduling
+        - [ ] Commit phase: Effect execution
+          - [ ] Before mutation: Layout effects
+          - [ ] After mutation: Passive effects
+    - [ ] Dependency Comparison
+      - [ ] Comparison algorithm
+        - [ ] Object.is() for each dependency
+        - [ ] Shallow comparison for arrays/objects
+        - [ ] Reference equality for functions/objects
+      - [ ] Dependency array variations
+        - [ ] Empty array []: Run only on mount
+        - [ ] Omitted: Run on every render
+        - [ ] Specific dependencies: Run when changed
+      - [ ] Common pitfalls
+        - [ ] Object/array literals causing infinite loops
+        - [ ] Function references changing on every render
+        - [ ] Missing dependencies causing stale closures
+    - [ ] Effect Execution Phases
+      - [ ] Commit phase breakdown
+        - [ ] Before mutation: DOM not yet updated
+        - [ ] Mutation: DOM updates applied
+        - [ ] After mutation: Passive effects run after paint
+      - [ ] Cleanup execution timing
+        - [ ] Before unmount: Cleanup runs before component removal
+        - [ ] Before re-run: Cleanup runs before effect re-execution
+        - [ ] Error handling: Cleanup runs even if effect errors
+    - [ ] Cleanup Functions
+      - [ ] Storage mechanism
+        - [ ] Stored in effect.destroy property
+        - [ ] Retrieved during cleanup phase
+      - [ ] Execution timing
+        - [ ] Before effect re-execution (if dependencies changed)
+        - [ ] Before component unmount
+        - [ ] Guaranteed execution order: parent before child
+      - [ ] Error handling
+        - [ ] Cleanup runs even if effect throws
+        - [ ] Errors in cleanup logged but don't block cleanup
+    - [ ] Hook Data Structure
+      - [ ] Linked list implementation
+        - [ ] Hooks stored in component's memoizedState
+        - [ ] Each hook points to next via next property
+        - [ ] Hook order must be consistent across renders
+      - [ ] Why order matters
+        - [ ] React relies on call order to match hooks
+        - [ ] Conditional hooks break this contract
+        - [ ] Early returns violate hook ordering
+    - [ ] Effect List Construction
+      - [ ] Building effect list during reconciliation
+        - [ ] Each fiber with effects gets effectTag
+        - [ ] Effects linked into single list per root
+        - [ ] Effect list traversal during commit
+      - [ ] Effect list order
+        - [ ] Parent effects before child effects
+        - [ ] Layout effects before passive effects
+    - [ ] useEffect vs useLayoutEffect
+      - [ ] Timing differences
+        - [ ] useEffect: After paint, non-blocking
+        - [ ] useLayoutEffect: Before paint, blocking
+      - [ ] Use cases
+        - [ ] useEffect: Data fetching, subscriptions, DOM mutations not visible
+        - [ ] useLayoutEffect: DOM measurements, synchronous mutations
+      - [ ] Performance implications
+        - [ ] useLayoutEffect blocks paint, use carefully
+        - [ ] useEffect allows browser to paint first
   - [ ] useCallback: memoizing functions
   - [ ] useMemo: memoizing values
   - [ ] useRef: DOM refs and persistent values
@@ -182,6 +359,23 @@
   - [ ] Virtual scrolling for large lists
   - [ ] Preventing unnecessary re-renders
   - [ ] Profiling React apps with DevTools
+  - [ ] React Memory Leak Patterns & Prevention
+    - [ ] Event Listener Leak
+      - [ ] Problem: Adding listeners without cleanup
+      - [ ] Some more problems regarding memory leak
+    - [ ] Detection & Prevention
+      - [ ] React DevTools Profiler
+        - [ ] Memory profiling mode
+        - [ ] Component mount/unmount tracking
+        - [ ] Flame graph for render analysis
+      - [ ] Cleanup patterns
+        - [ ] Always return cleanup function in useEffect
+        - [ ] Use ESLint rule: react-hooks/exhaustive-deps
+        - [ ] Test with React Testing Library unmount
+      - [ ] Best practices
+        - [ ] Review all useEffect for cleanup
+        - [ ] Test component unmount in development
+        - [ ] Use WeakMap/WeakSet for temporary storage
 - [ ] Routing
   - [ ] React Router: BrowserRouter, Routes, Route
   - [ ] Route parameters and query strings
@@ -290,6 +484,114 @@
   - [ ] JWT structure: header, payload, signature
   - [ ] JWT claims: registered, public, private
   - [ ] JWT signing algorithms (HS256, RS256)
+  - [ ] JWT Algorithm Internals
+    - [ ] HS256 (HMAC SHA-256)
+      - [ ] Algorithm components
+        - [ ] HMAC (Hash-based Message Authentication Code)
+        - [ ] SHA-256 cryptographic hash function
+      - [ ] Signing process
+        - [ ] Input: base64url(header) + "." + base64url(payload)
+        - [ ] Secret key: Shared secret between parties
+        - [ ] HMAC computation: HMAC-SHA256(key, data)
+        - [ ] Output: 256-bit signature (43 chars base64url)
+      - [ ] Verification process
+        - [ ] Recompute HMAC with same secret key
+        - [ ] Compare computed signature with provided signature
+        - [ ] Use timing-safe comparison to prevent timing attacks
+      - [ ] Security considerations
+        - [ ] Secret key must be kept confidential
+        - [ ] Use cryptographically strong random secrets (256+ bits)
+        - [ ] Rotate secrets regularly
+        - [ ] Never include secrets in JWT payload
+    - [ ] RS256 (RSA SHA-256)
+      - [ ] Algorithm components
+        - [ ] RSA (Rivest-Shamir-Adleman) asymmetric encryption
+        - [ ] SHA-256 hash function
+        - [ ] Private key for signing, public key for verification
+      - [ ] Key pair generation
+        - [ ] Private key: Used for signing (keep secret)
+        - [ ] Public key: Used for verification (can be shared)
+        - [ ] Key size: Minimum 2048 bits (recommended 4096 bits)
+        - [ ] Key formats: PEM, JWK
+      - [ ] Signature generation
+        - [ ] Input: base64url(header) + "." + base64url(payload)
+        - [ ] Hash: SHA-256(data) → 256-bit hash
+        - [ ] Sign: RSA-Sign(privateKey, hash) → signature
+        - [ ] Output: Variable-length signature (256-512 bytes)
+      - [ ] Verification process
+        - [ ] Hash: SHA-256(data) → 256-bit hash
+        - [ ] Verify: RSA-Verify(publicKey, signature, hash)
+        - [ ] Result: Valid or invalid
+      - [ ] Key management
+        - [ ] Private key storage: Environment variables, KMS, HSM
+        - [ ] Public key distribution: JWKS endpoint, embedded in app
+        - [ ] Key rotation: Support multiple keys with `kid` claim
+        - [ ] Key revocation: Maintain revoked key list
+    - [ ] Base64url Encoding
+      - [ ] Differences from standard Base64
+        - [ ] No padding (= characters removed)
+        - [ ] + replaced with - (URL-safe)
+        - [ ] / replaced with _ (URL-safe)
+      - [ ] Encoding process
+        - [ ] Convert string to bytes (UTF-8)
+        - [ ] Apply standard Base64 encoding
+        - [ ] Replace + with -, / with _
+        - [ ] Remove trailing = padding
+      - [ ] Decoding process
+        - [ ] Replace - with +, _ with /
+        - [ ] Add padding if needed (to make length multiple of 4)
+        - [ ] Apply standard Base64 decoding
+        - [ ] Convert bytes to string (UTF-8)
+    - [ ] Signature Computation
+      - [ ] JWT structure
+        - [ ] Header: base64url(JSON.stringify({ alg, typ, ... }))
+        - [ ] Payload: base64url(JSON.stringify({ iss, sub, exp, ... }))
+        - [ ] Signature: algorithm-specific signing
+      - [ ] Signing input
+        - [ ] data = base64url(header) + "." + base64url(payload)
+        - [ ] signature = sign(data, key)
+      - [ ] Complete JWT format
+        - [ ] token = header + "." + payload + "." + signature
+        - [ ] Example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U
+    - [ ] Algorithm Header Structure
+      - [ ] Header fields
+        - [ ] alg: Algorithm identifier (HS256, RS256, etc.)
+        - [ ] typ: Token type (usually "JWT")
+        - [ ] kid: Key ID (for key rotation with RS256)
+        - [ ] cty: Content type (optional)
+      - [ ] Example headers
+        ```json
+        // HS256 header
+        {
+          "alg": "HS256",
+          "typ": "JWT"
+        }
+        
+        // RS256 header with key ID
+        {
+          "alg": "RS256",
+          "typ": "JWT",
+          "kid": "key-2024-01"
+        }
+        ```
+    - [ ] Security Implications
+      - [ ] Algorithm confusion attacks
+        - [ ] Attack: Change alg header to "none" or weaker algorithm
+        - [ ] Prevention: Verify alg header matches expected algorithm
+        - [ ] Never trust alg header from untrusted tokens
+      - [ ] Key selection best practices
+        - [ ] HS256: Use for internal services, single secret
+        - [ ] RS256: Use for public-facing APIs, key rotation support
+        - [ ] Never use "none" algorithm in production
+        - [ ] Reject tokens with unexpected algorithms
+      - [ ] Timing attack prevention
+        - [ ] Use constant-time comparison for signature verification
+        - [ ] Don't use == or === for signature comparison
+        - [ ] Libraries: crypto.timingSafeEqual (Node.js)
+      - [ ] Key strength requirements
+        - [ ] HS256: Minimum 256-bit secret (32 bytes)
+        - [ ] RS256: Minimum 2048-bit key (4096 recommended)
+        - [ ] Use cryptographically secure random generation
   - [ ] Token expiration and refresh strategies
   - [ ] JWT rotation and revocation
   - [ ] JWT security best practices
